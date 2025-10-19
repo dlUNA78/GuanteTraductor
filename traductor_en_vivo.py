@@ -2,7 +2,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import time
-# import serial  # Descomentar para usar el modo Serial
+import serial  # Librería para comunicación por puerto serie
 
 # --- Configuración ---
 MODO_SERIAL = False  # Cambiar a True para leer desde el puerto serie
@@ -32,14 +32,13 @@ def main():
     # Inicializar la conexión serial si está en modo serial
     puerto = None
     if MODO_SERIAL:
-        # --- Código para la comunicación Serial (Persona 2) ---
-        # try:
-        #     puerto = serial.Serial(PUERTO_SERIE, BAUD_RATE, timeout=1)
-        #     print(f"Escuchando en el puerto serie {PUERTO_SERIE} a {BAUD_RATE} baudios.")
-        # except serial.SerialException as e:
-        #     print(f"Error al abrir el puerto serie: {e}")
-        #     return
-        pass # Placeholder
+        try:
+            puerto = serial.Serial(PUERTO_SERIE, BAUD_RATE, timeout=1)
+            print(f"Escuchando en el puerto serie {PUERTO_SERIE} a {BAUD_RATE} baudios.")
+            time.sleep(2) # Dar tiempo a que la conexión se establezca
+        except serial.SerialException as e:
+            print(f"Error al abrir el puerto serie '{PUERTO_SERIE}': {e}")
+            return
 
     print("\n--- Iniciando traductor en vivo ---")
     print("Presiona Ctrl+C para detener.")
@@ -50,20 +49,20 @@ def main():
             datos_para_predecir = None
 
             if MODO_SERIAL:
-                # --- Lectura desde Puerto Serie (a implementar por Persona 2) ---
-                # if puerto and puerto.in_waiting > 0:
-                #     linea = puerto.readline().decode('utf-8').strip()
-                #     if linea:
-                #         print(f"Dato recibido: {linea}")
-                #         try:
-                #             valores = [float(v) for v in linea.split(',')]
-                #             if len(valores) == 5:
-                #                 datos_para_predecir = np.array([valores])
-                #             else:
-                #                 print("Advertencia: Se recibieron datos con formato incorrecto.")
-                #         except ValueError:
-                #             print("Advertencia: No se pudo convertir los datos a números.")
-                pass # Placeholder
+                # --- Lectura desde Puerto Serie ---
+                if puerto and puerto.in_waiting > 0:
+                    linea = puerto.readline().decode('utf-8').strip()
+                    if linea:
+                        print(f"Dato recibido: {linea}")
+                        try:
+                            # Divide la cadena por comas y convierte a flotantes
+                            valores = [float(v) for v in linea.split(',')]
+                            if len(valores) == 5:
+                                datos_para_predecir = np.array([valores])
+                            else:
+                                print(f"Advertencia: Se esperaban 5 valores, pero se recibieron {len(valores)}.")
+                        except ValueError:
+                            print("Advertencia: No se pudo convertir los datos a números. Verifique el formato.")
             else:
                 # --- Simulación de datos (Modo por defecto) ---
                 # 3. Simular la recepción de datos de 5 sensores
@@ -83,8 +82,8 @@ def main():
                 print(f"** Predicción: {prediccion_final[0]} **\n")
 
                 # Opcional: Enviar la predicción de vuelta por el puerto serie
-                # if puerto:
-                #     puerto.write(f"{prediccion_final[0]}\n".encode('utf-8'))
+                if puerto:
+                    puerto.write(f"{prediccion_final[0]}\n".encode('utf-8'))
 
             # 6. Pausa para simular tasa de muestreo
             time.sleep(0.5)
@@ -96,9 +95,9 @@ def main():
             print(f"Ocurrió un error inesperado: {e}")
             break
 
-    # if puerto and puerto.is_open:
-    #     puerto.close()
-    #     print("Puerto serie cerrado.")
+    if puerto and puerto.is_open:
+        puerto.close()
+        print("Puerto serie cerrado.")
 
 if __name__ == "__main__":
     main()
